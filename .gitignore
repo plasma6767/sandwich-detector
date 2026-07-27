@@ -1,0 +1,15 @@
+# Secrets - never commit these
+.env
+
+# Compiles binaries
+/bin/
+detector
+
+# Go workspace file
+go.work
+
+
+# Editor noise
+.DS_Store
+.idea/
+.vscode/
