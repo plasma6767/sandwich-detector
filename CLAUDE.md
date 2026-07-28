@@ -13,3 +13,4 @@ Detects MEV sandwich attacks on Ethereum. I'm learning web3 backend -- explain c
 ## Rules
 - Config comes from environment variables. Never hardcode URLs or keys.
 - Never write to `.env`
+- Never log or print ETH_RPC_URL - the Alchemy key is in the URL path. Log the host only, never the full URL.
