@@ -1,7 +1,12 @@
+// Tests for hostOnly(). These don't make any network calls, so they run
+// fast and safely as part of `make test`.
 package ethnode
 
 import "testing"
 
+// TestHostOnly checks hostOnly against several example URLs, using a table
+// test: a list of input/expected-output cases looped over, instead of one
+// function per case.
 func TestHostOnly(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -27,6 +32,8 @@ func TestHostOnly(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		// t.Run creates a named sub-test per case, so a failure points
+		// directly at which case broke.
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := hostOnly(tc.rawURL)
 
