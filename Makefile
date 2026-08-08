@@ -1,4 +1,4 @@
-.PHONY: run build test tidy
+.PHONY: run build test test-integration tidy
 
 run:
 	go run ./cmd/detector
@@ -8,6 +8,9 @@ build:
 
 test:
 	go test ./...
+
+test-integration:
+	go test -tags=integration ./...
 
 tidy:
 	go mod tidy
