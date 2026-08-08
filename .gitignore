@@ -3,7 +3,7 @@
 
 # Compiles binaries
 /bin/
-detector
+/detector
 
 # Go workspace file
 go.work
