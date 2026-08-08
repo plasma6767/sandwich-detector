@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	// ethclient is part of go-ethereum, the reference Ethereum implementation,
 	// and handles the Ethereum network protocol for us.
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -51,6 +52,26 @@ func (c *Client) Host() string {
 // i.e. how many blocks have been processed so far.
 func (c *Client) LatestBlockNumber(ctx context.Context) (uint64, error) {
 	return c.inner.BlockNumber(ctx)
+}
+
+// LatestBlockTransactions fetches the most recently produced block and
+// returns an ordered summary of every transaction in it. It first asks the
+// node which network it's on (the chain ID), since that determines the
+// signing rules needed to recover each transaction's sender.
+func (c *Client) LatestBlockTransactions(ctx context.Context) ([]TxSummary, error) {
+	chainID, err := c.inner.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch chain ID: %w", err)
+	}
+	signer := types.LatestSignerForChainID(chainID)
+
+	// A nil block number means "the latest block" to ethclient.
+	block, err := c.inner.BlockByNumber(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest block: %w", err)
+	}
+
+	return TransactionsIn(block, signer)
 }
 
 // Close releases the underlying network connection.
