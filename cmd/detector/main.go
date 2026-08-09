@@ -11,6 +11,7 @@ import (
 
 	"github.com/plasma6767/sandwich-detector/internal/config"
 	"github.com/plasma6767/sandwich-detector/internal/ethnode"
+	"github.com/plasma6767/sandwich-detector/internal/sandwich"
 )
 
 func main() {
@@ -36,4 +37,20 @@ func main() {
 	}
 
 	log.Printf("connected to %s, latest block: %d", client.Host(), blockNumber)
+
+	txs, err := client.LatestBlockTransactions(ctx)
+	if err != nil {
+		log.Fatalf("failed to fetch latest block transactions: %v", err)
+	}
+
+	sandwiches := sandwich.Detect(txs)
+	if len(sandwiches) == 0 {
+		log.Printf("scanned %d transactions, no sandwiches found", len(txs))
+		return
+	}
+
+	for _, s := range sandwiches {
+		log.Printf("sandwich detected: front-run at position %d, victim at %d, back-run at %d",
+			s.FrontRun.Position, s.Victim.Position, s.BackRun.Position)
+	}
 }
