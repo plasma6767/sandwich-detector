@@ -10,7 +10,7 @@ Detects MEV sandwich attacks on Ethereum by analyzing transaction ordering withi
 
 ## Status
 
-Config loading and a live Ethereum connection are working (`make run` connects via Alchemy and prints the latest block number). Sandwich-detection logic itself is not implemented yet.
+`make run` connects via Alchemy, fetches the latest block's transactions, and scans them for sandwich attacks (`internal/sandwich`). The current heuristic: the same sender hitting the same recipient twice with a different sender's transaction to that recipient in between. It doesn't yet decode swap data or check price impact, so it can false-positive on unrelated same-sender/same-recipient traffic.
 
 ## Learning: raw JSON-RPC vs ethclient
 
