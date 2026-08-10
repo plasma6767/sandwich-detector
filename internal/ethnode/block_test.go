@@ -41,9 +41,12 @@ func TestTransactionsIn(t *testing.T) {
 	// tx0 and tx1 are ordinary transfers with a recipient. tx2 has a nil
 	// To address, which is how Ethereum represents "this transaction
 	// deploys a new contract" rather than sending to an existing address.
-	tx0 := signTx(t, signer, aliceKey, &poolAddr)
-	tx1 := signTx(t, signer, bobKey, &poolAddr)
-	tx2 := signTx(t, signer, carolKey, nil)
+	// Each uses a different gas price (the fee offered to get included) so
+	// the test can confirm TransactionsIn reports the right one per
+	// transaction, not just a shared default.
+	tx0 := signTx(t, signer, aliceKey, &poolAddr, big.NewInt(10))
+	tx1 := signTx(t, signer, bobKey, &poolAddr, big.NewInt(20))
+	tx2 := signTx(t, signer, carolKey, nil, big.NewInt(30))
 
 	block := types.NewBlock(
 		&types.Header{Number: big.NewInt(1)},
@@ -60,9 +63,9 @@ func TestTransactionsIn(t *testing.T) {
 		t.Fatalf("got %d transactions, want 3", len(got))
 	}
 
-	checkSummary(t, got[0], 0, aliceAddr, &poolAddr)
-	checkSummary(t, got[1], 1, bobAddr, &poolAddr)
-	checkSummary(t, got[2], 2, carolAddr, nil)
+	checkSummary(t, got[0], 0, aliceAddr, &poolAddr, big.NewInt(10))
+	checkSummary(t, got[1], 1, bobAddr, &poolAddr, big.NewInt(20))
+	checkSummary(t, got[2], 2, carolAddr, nil, big.NewInt(30))
 }
 
 // TestTransactionsIn_WrongSigner checks that TransactionsIn returns an
@@ -73,7 +76,7 @@ func TestTransactionsIn_WrongSigner(t *testing.T) {
 	to := crypto.PubkeyToAddress(generateKey(t).PublicKey)
 
 	signingSigner := types.LatestSignerForChainID(big.NewInt(1))
-	tx := signTx(t, signingSigner, key, &to)
+	tx := signTx(t, signingSigner, key, &to, big.NewInt(1))
 
 	block := types.NewBlock(
 		&types.Header{Number: big.NewInt(1)},
@@ -100,15 +103,16 @@ func generateKey(t *testing.T) *ecdsa.PrivateKey {
 }
 
 // signTx builds and signs a minimal transaction from the given key to the
-// given recipient (nil meaning "contract creation, no recipient").
-func signTx(t *testing.T, signer types.Signer, key *ecdsa.PrivateKey, to *common.Address) *types.Transaction {
+// given recipient (nil meaning "contract creation, no recipient") offering
+// the given gas price - the fee the sender pays to get included.
+func signTx(t *testing.T, signer types.Signer, key *ecdsa.PrivateKey, to *common.Address, gasPrice *big.Int) *types.Transaction {
 	t.Helper()
 	tx, err := types.SignNewTx(key, signer, &types.LegacyTx{
 		Nonce:    0,
 		To:       to,
 		Value:    big.NewInt(0),
 		Gas:      21000,
-		GasPrice: big.NewInt(1),
+		GasPrice: gasPrice,
 	})
 	if err != nil {
 		t.Fatalf("failed to sign transaction: %v", err)
@@ -117,8 +121,9 @@ func signTx(t *testing.T, signer types.Signer, key *ecdsa.PrivateKey, to *common
 }
 
 // checkSummary asserts that a TxSummary matches the expected position,
-// sender, and recipient (a nil wantTo means "expected no recipient").
-func checkSummary(t *testing.T, got TxSummary, wantPosition int, wantFrom common.Address, wantTo *common.Address) {
+// sender, recipient (a nil wantTo means "expected no recipient"), and gas
+// price.
+func checkSummary(t *testing.T, got TxSummary, wantPosition int, wantFrom common.Address, wantTo *common.Address, wantGasPrice *big.Int) {
 	t.Helper()
 	if got.Position != wantPosition {
 		t.Errorf("got position %d, want %d", got.Position, wantPosition)
@@ -133,5 +138,8 @@ func checkSummary(t *testing.T, got TxSummary, wantPosition int, wantFrom common
 		t.Errorf("got to nil, want %s", wantTo)
 	case wantTo != nil && got.To != nil && *got.To != *wantTo:
 		t.Errorf("got to %s, want %s", got.To, wantTo)
+	}
+	if got.GasPrice == nil || got.GasPrice.Cmp(wantGasPrice) != 0 {
+		t.Errorf("got gas price %s, want %s", got.GasPrice, wantGasPrice)
 	}
 }

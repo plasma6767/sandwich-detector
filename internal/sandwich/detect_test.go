@@ -4,6 +4,7 @@
 package sandwich
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,9 +29,9 @@ func TestDetect_FindsSandwich(t *testing.T) {
 	pool := addrPtr("0xaaaa")
 
 	txs := []ethnode.TxSummary{
-		{Position: 0, From: alice, To: pool},
-		{Position: 1, From: bob, To: pool},
-		{Position: 2, From: alice, To: pool},
+		{Position: 0, From: alice, To: pool, GasPrice: big.NewInt(30)},
+		{Position: 1, From: bob, To: pool, GasPrice: big.NewInt(20)},
+		{Position: 2, From: alice, To: pool, GasPrice: big.NewInt(10)},
 	}
 
 	got := Detect(txs)
@@ -40,6 +41,26 @@ func TestDetect_FindsSandwich(t *testing.T) {
 	s := got[0]
 	if s.FrontRun.Position != 0 || s.Victim.Position != 1 || s.BackRun.Position != 2 {
 		t.Fatalf("got sandwich %+v, want front=0 victim=1 back=2", s)
+	}
+}
+
+// TestDetect_NoFalsePositive_GasPriceNotBracketed checks that the same
+// sender/recipient shape as a real sandwich is NOT flagged when the gas
+// prices don't follow the attacker pattern (high on the first trade, lower
+// on the victim's, lower still on the last).
+func TestDetect_NoFalsePositive_GasPriceNotBracketed(t *testing.T) {
+	alice := addr("0x1")
+	bob := addr("0x2")
+	pool := addrPtr("0xaaaa")
+
+	txs := []ethnode.TxSummary{
+		{Position: 0, From: alice, To: pool, GasPrice: big.NewInt(10)},
+		{Position: 1, From: bob, To: pool, GasPrice: big.NewInt(20)},
+		{Position: 2, From: alice, To: pool, GasPrice: big.NewInt(30)},
+	}
+
+	if got := Detect(txs); len(got) != 0 {
+		t.Fatalf("got %d sandwiches, want 0 (gas prices don't bracket the victim)", len(got))
 	}
 }
 
