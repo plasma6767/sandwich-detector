@@ -2,19 +2,21 @@ package ethnode
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // TxSummary is the minimal information about one transaction that
-// sandwich detection needs: where it sat in the block, who sent it, and
-// who it was sent to. To is nil for contract-creation transactions, which
-// have no recipient.
+// sandwich detection needs: where it sat in the block, who sent it, who it
+// was sent to, and the fee it offered to be included. To is nil for
+// contract-creation transactions, which have no recipient.
 type TxSummary struct {
 	Position int
 	From     common.Address
 	To       *common.Address
+	GasPrice *big.Int
 }
 
 // TransactionsIn returns an ordered summary of every transaction in block,
@@ -37,11 +39,13 @@ func TransactionsIn(block *types.Block, signer types.Signer) ([]TxSummary, error
 
 		// tx.To() is nil for contract-creation transactions, which have no
 		// recipient - we pass that through as-is rather than substituting
-		// a placeholder address.
+		// a placeholder address. tx.GasPrice() is already decoded on the
+		// transaction, so this doesn't require any extra network call.
 		summaries = append(summaries, TxSummary{
 			Position: i,
 			From:     from,
 			To:       tx.To(),
+			GasPrice: tx.GasPrice(),
 		})
 	}
 
