@@ -40,7 +40,14 @@ func Detect(txs []ethnode.TxSummary) []Sandwich {
 
 			for j := i + 1; j < k; j++ {
 				victim := txs[j]
-				if victim.To != nil && *victim.To == *front.To && victim.From != front.From {
+				// Besides the sender/recipient shape, a real attacker also
+				// bids a higher gas price on the front-run than the
+				// victim's, and a lower one on the back-run - just enough
+				// to land before and after without overpaying. Requiring
+				// that ordering here rules out coincidental traffic that
+				// happens to share the same sender/recipient pattern.
+				if victim.To != nil && *victim.To == *front.To && victim.From != front.From &&
+					front.GasPrice.Cmp(victim.GasPrice) > 0 && victim.GasPrice.Cmp(back.GasPrice) > 0 {
 					found = append(found, Sandwich{FrontRun: front, Victim: victim, BackRun: back})
 					break
 				}
